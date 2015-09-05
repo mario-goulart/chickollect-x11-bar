@@ -1,0 +1,6 @@
+;; -*- scheme -*-
+((synopsis "A very simple X11 bar based on chickollect and ezxdisp")
+ (author "Mario Domenech Goulart")
+ (category tools)
+ (license "BSD")
+ (depends chickollect ezxdisp))

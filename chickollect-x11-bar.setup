@@ -1,0 +1,8 @@
+;; -*- scheme -*-
+(compile -ASM chickollect-x11-bar.scm)
+(compile -d0 -O3 chickollect-x11-bar.scm)
+
+(install-program
+ 'chickollect-x11-bar
+ '("chickollect-x11-bar")
+ '((version "0.0.1")))
