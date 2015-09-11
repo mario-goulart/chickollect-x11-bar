@@ -71,50 +71,61 @@
         (height #f)
         (text-color #f)
         (network-devices #f))
-    (lambda (bar sys-data conf-data)
-      (unless conf-parsed?
+    (lambda (bar sys-data conf-data reparse-conf?)
+      (when (or reparse-conf? (not conf-parsed?))
         (set! network-devices (conf-val conf-data 'network-devices '(eth0)))
         (set! text-color (apply make-ezx-color
                                 (conf-val conf-data 'text-color '(1 1 1))))
         (set! height (conf-val conf-data 'bar-height default-height))
         (set! conf-parsed? #t))
-      (let* ((memory (alist-ref 'memory sys-data))
-             (ram (trunc (car memory)))
-             (swap (trunc (cdr memory)))
-             (batteries-data (alist-ref 'battery sys-data))
-             (cpu-stats (alist-ref 'cpu sys-data))
-             (num-cpus (length cpu-stats))
-             (avg-cpu-usage (trunc (/ (apply + cpu-stats) num-cpus)))
-             (bar-fmt
-              "~a  ~a  |  CPU: ~a%  |  RAM: ~a%  |  SWAP: ~a%  |  ~a  |  ~a")
-             (content (sprintf bar-fmt
-                               (alist-ref 'time sys-data)
-                               (alist-ref 'date sys-data)
-                               (pad-number avg-cpu-usage)
-                               (pad-number ram)
-                               (pad-number swap)
-                               (format-batteries batteries-data)
-                               (format-network-devices sys-data network-devices))))
-        (ezx-wipe bar)
-        (ezx-str-2d bar 2 (fx- height 1) content text-color)
-        (ezx-redraw bar)))))
+      (unless reparse-conf?
+        (let* ((memory (alist-ref 'memory sys-data))
+               (ram (trunc (car memory)))
+               (swap (trunc (cdr memory)))
+               (batteries-data (alist-ref 'battery sys-data))
+               (cpu-stats (alist-ref 'cpu sys-data))
+               (num-cpus (length cpu-stats))
+               (avg-cpu-usage (trunc (/ (apply + cpu-stats) num-cpus)))
+               (bar-fmt
+                "~a  ~a  |  CPU: ~a%  |  RAM: ~a%  |  SWAP: ~a%  |  ~a  |  ~a")
+               (content (sprintf bar-fmt
+                                 (alist-ref 'time sys-data)
+                                 (alist-ref 'date sys-data)
+                                 (pad-number avg-cpu-usage)
+                                 (pad-number ram)
+                                 (pad-number swap)
+                                 (format-batteries batteries-data)
+                                 (format-network-devices sys-data network-devices))))
+          (ezx-wipe bar)
+          (ezx-str-2d bar 2 (fx- height 1) content text-color)
+          (ezx-redraw bar))))))
+
+(define (read-conf-file conf-file)
+  (if conf-file
+      (with-input-from-file conf-file read-file)
+      '()))
 
 (define (main args)
   (let* ((conf-file (and (not (null? args))
                         (car args)))
-         (conf-data (if conf-file
-                        (with-input-from-file conf-file read-file)
-                        '()))
+         (conf-data (read-conf-file conf-file))
          (width (conf-val conf-data 'bar-width 800))
          (title (conf-val conf-data 'bar-title "chickollect-x11-bar"))
          (height (conf-val conf-data 'bar-height default-height))
          (bg-color (apply make-ezx-color
                           (conf-val conf-data 'background-color '(0 0 0))))
          (bar (ezx-init width height title)))
+
+    ;; Reload configuration upon receiving SIGHUP
+    (set-signal-handler! signal/hup
+      (lambda (signum)
+        (set! conf-data (read-conf-file conf-file))
+        (redraw bar '() conf-data #t)))
+
     (ezx-set-background bar bg-color)
     (collect-loop
      (lambda (data)
-       (redraw bar data conf-data)))
+       (redraw bar data conf-data #f)))
     (ezx-quit bar)))
 
 (main (command-line-arguments))
