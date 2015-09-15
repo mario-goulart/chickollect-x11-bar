@@ -125,7 +125,8 @@
     (ezx-set-background bar bg-color)
     (collect-loop
      (lambda (data)
-       (redraw bar data conf-data #f)))
+       (redraw bar data conf-data #f))
+     conf: conf-data)
     (ezx-quit bar)))
 
 (main (command-line-arguments))
