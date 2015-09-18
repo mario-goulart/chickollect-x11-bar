@@ -3,6 +3,8 @@
 
 (define default-height 12)
 
+(define config (make-parameter '()))
+
 (define (trunc n)
   (inexact->exact (truncate n)))
 
@@ -30,8 +32,8 @@
          (conc " " n))
         (else (->string n))))
 
-(define (conf-val conf-data field #!optional default)
-  (alist-ref field conf-data eqv? default))
+(define (config-val field #!optional default)
+  (alist-ref field (config) eqv? default))
 
 (define (format-network-devices sys-data network-devices)
   (string-intersperse
@@ -71,12 +73,12 @@
         (height #f)
         (text-color #f)
         (network-devices #f))
-    (lambda (bar sys-data conf-data reparse-conf?)
+    (lambda (bar sys-data reparse-conf?)
       (when (or reparse-conf? (not conf-parsed?))
-        (set! network-devices (conf-val conf-data 'network-devices '(eth0)))
+        (set! network-devices (config-val 'network-devices '(eth0)))
         (set! text-color (apply make-ezx-color
-                                (conf-val conf-data 'text-color '(1 1 1))))
-        (set! height (conf-val conf-data 'bar-height default-height))
+                                (config-val 'text-color '(1 1 1))))
+        (set! height (config-val 'bar-height default-height))
         (set! conf-parsed? #t))
       (unless reparse-conf?
         (let* ((memory (alist-ref 'memory sys-data))
@@ -100,33 +102,33 @@
           (ezx-str-2d bar 2 (fx- height 1) content text-color)
           (ezx-redraw bar))))))
 
-(define (read-conf-file conf-file)
-  (if conf-file
-      (with-input-from-file conf-file read-file)
-      '()))
-
 (define (main args)
-  (let* ((conf-file (and (not (null? args))
-                        (car args)))
-         (conf-data (read-conf-file conf-file))
-         (width (conf-val conf-data 'bar-width 800))
-         (title (conf-val conf-data 'bar-title "chickollect-x11-bar"))
-         (height (conf-val conf-data 'bar-height default-height))
-         (bg-color (apply make-ezx-color
-                          (conf-val conf-data 'background-color '(0 0 0))))
-         (bar (ezx-init width height title)))
+  (let ((conf-file (and (not (null? args))
+                        (car args))))
+    (when conf-file
+      (load conf-file))
+    (let* ((width (config-val 'bar-width 800))
+           (title (config-val 'bar-title "chickollect-x11-bar"))
+           (height (config-val 'bar-height default-height))
+           (bg-color (apply make-ezx-color
+                            (config-val 'background-color '(0 0 0))))
+           (bar (ezx-init width height title))
+           (collect-hook (config-val 'hook)))
 
-    ;; Reload configuration upon receiving SIGHUP
-    (set-signal-handler! signal/hup
-      (lambda (signum)
-        (set! conf-data (read-conf-file conf-file))
-        (redraw bar '() conf-data #t)))
+      ;; Reload configuration upon receiving SIGHUP
+      (set-signal-handler! signal/hup
+                           (lambda (signum)
+                             (load conf-file)
+                             (set! collect-hook (config-val 'hook))
+                             (redraw bar '() #t)))
 
-    (ezx-set-background bar bg-color)
-    (collect-loop
-     (lambda (data)
-       (redraw bar data conf-data #f))
-     conf: conf-data)
-    (ezx-quit bar)))
+      (ezx-set-background bar bg-color)
+      (collect-loop
+       (lambda (data)
+         (when collect-hook
+           (collect-hook data))
+         (redraw bar data #f))
+       conf: (config))
+      (ezx-quit bar))))
 
 (main (command-line-arguments))
