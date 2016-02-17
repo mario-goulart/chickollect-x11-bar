@@ -47,6 +47,7 @@
    (map (lambda (dev)
           (or (and-let* ((net-conf (alist-ref 'network sys-data))
                          (net-stats (alist-ref dev net-conf))
+                         (net-stats)
                          (download (format-transfer-rate (car net-stats)))
                          (upload (format-transfer-rate (cadr net-stats))))
                 (apply sprintf (list "~a: ~a v  ~a ^"
@@ -62,26 +63,28 @@
    "BATTERY: "
    (string-intersperse
     (map (lambda (battery-data)
-           (let* ((battery-status (car battery-data))
-                  (battery-capacity (cdr battery-data))
-                  (battery-status-icon
-                   (cond ((eq? battery-status 'Charging) "^")
-                         ((eq? battery-status 'Discharging) "v")
-                         ((eq? battery-status 'Full) "")
-                         (else #f))))
-             (if battery-status
-                 (conc battery-capacity "%" (or battery-status-icon ""))
-                 "--")))
+           (if battery-data
+               (let* ((battery-status (car battery-data))
+                      (battery-capacity (cdr battery-data))
+                      (battery-status-icon
+                       (cond ((eq? battery-status 'Charging) "^")
+                             ((eq? battery-status 'Discharging) "v")
+                             ((eq? battery-status 'Full) "")
+                             (else #f))))
+                 (if battery-status
+                     (conc battery-capacity "%" (or battery-status-icon ""))
+                     "--"))
+               "--"))
          batteries-data)
     " ")))
 
 (define (redraw bar sys-data)
   (let* ((memory (alist-ref 'memory sys-data))
-         (ram (trunc (car memory)))
-         (swap (trunc (cdr memory)))
-         (batteries-data (alist-ref 'battery sys-data))
-         (cpu-stats (alist-ref 'cpu sys-data))
-         (num-cpus (length cpu-stats))
+         (ram (if memory (trunc (car memory)) "--"))
+         (swap (if memory (trunc (cdr memory)) "--"))
+         (batteries-data (or (alist-ref 'battery sys-data) '()))
+         (cpu-stats (or (alist-ref 'cpu sys-data) '(0)))
+         (num-cpus (if cpu-stats (length cpu-stats) "--"))
          (avg-cpu-usage (trunc (/ (apply + cpu-stats) num-cpus)))
          (bar-fmt
           "~a  ~a  |  CPU: ~a%  |  RAM: ~a%  |  SWAP: ~a%  |  ~a  |  ~a")
@@ -97,21 +100,27 @@
     (ezx-str-2d bar 2 (fx- (bar-height) 1) content (bar-text-color))
     (ezx-redraw bar)))
 
+(define (init-bar)
+  (let ((bar (ezx-init (bar-width) (bar-height) (bar-title))))
+    (print (bar-width))
+    (ezx-set-background bar (bar-background-color))
+    bar))
+
 (define (main args)
   (let ((conf-file (and (not (null? args))
                         (car args))))
     (when conf-file
       (load conf-file))
-    (let ((bar (ezx-init (bar-width) (bar-height) (bar-title))))
-
+    (let ((bar (init-bar)))
       ;; Reload configuration upon receiving SIGHUP
       (set-signal-handler!
        signal/hup
        (lambda (signum)
          (load conf-file)
+         (ezx-quit bar)
+         (set! bar (init-bar))
          (redraw bar '())))
 
-      (ezx-set-background bar (bar-background-color))
       (collect-loop
        (lambda (data)
          (when (collect-hook)
