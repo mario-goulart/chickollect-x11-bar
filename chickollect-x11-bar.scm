@@ -102,7 +102,6 @@
 
 (define (init-bar)
   (let ((bar (ezx-init (bar-width) (bar-height) (bar-title))))
-    (print (bar-width))
     (ezx-set-background bar (bar-background-color))
     bar))
 
