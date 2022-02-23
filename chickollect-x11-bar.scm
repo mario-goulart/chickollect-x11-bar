@@ -1,5 +1,17 @@
-(use data-structures extras posix)
-(use ezxdisp chickollect)
+(import scheme)
+(cond-expand
+ (chicken-4
+  (use data-structures extras posix)
+  (use ezxdisp chickollect))
+ (chicken-5
+  (import (chicken fixnum)
+          (chicken format)
+          (chicken process signal)
+          (chicken process-context)
+          (chicken string))
+  (import ezxdisp chickollect))
+ (else
+  (error "Unsupported CHICKEN version.")))
 
 (define bar-height (make-parameter 12))
 (define bar-width (make-parameter 800))

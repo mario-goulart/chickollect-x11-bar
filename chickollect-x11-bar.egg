@@ -1,0 +1,10 @@
+;;; chickollect-x11-bar.egg -*- scheme -*-
+
+((synopsis "A very simple X11 bar based on chickollect and ezxdisp")
+ (author "Mario Domenech Goulart")
+ (license "BSD")
+ (category tools)
+ (dependencies chickollect ezxdisp)
+ (component-options
+  (csc-options "-O3" "-d0"))
+ (components (program chickollect-x11-bar)))
