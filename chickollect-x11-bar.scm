@@ -24,7 +24,7 @@
 ;; Parameters for chickollect
 (define date/time-format (make-parameter "%T  %F  w%V"))
 (define collect-interval (make-parameter 1))
-(define monitors (make-parameter '(memory cpu date/time battery network)))
+(define monitors (make-parameter '(date/time cpu memory battery network)))
 
 (define (trunc n)
   (inexact->exact (truncate n)))
@@ -90,24 +90,50 @@
     " ")))
 
 (define (redraw bar sys-data)
-  (let* ((memory (alist-ref 'memory sys-data))
-         (ram (if memory (trunc (car memory)) "--"))
-         (swap (if memory (trunc (cdr memory)) "--"))
-         (batteries-data (or (alist-ref 'battery sys-data) '()))
-         (cpu-stats (or (alist-ref 'cpu sys-data) '(0)))
-         (num-cpus (if cpu-stats (length cpu-stats) "--"))
-         (avg-cpu-usage (trunc (/ (apply + cpu-stats) num-cpus)))
-         (bar-fmt
-          "~a  |  CPU: ~a%  |  RAM: ~a%  |  SWAP: ~a%  |  ~a  |  ~a")
-         (content (sprintf bar-fmt
-                           (alist-ref 'date/time sys-data)
-                           (pad-number avg-cpu-usage)
-                           (pad-number ram)
-                           (pad-number swap)
-                           (format-batteries batteries-data)
-                           (format-network-devices sys-data))))
+  (let* ((bar-data
+          (let loop ((monitors (monitors)))
+            (if (null? monitors)
+                '()
+                (let ((monitor (car monitors)))
+                  (case monitor
+                    ((date/time)
+                     (cons (or (alist-ref 'date/time sys-data) "--")
+                           (loop (cdr monitors))))
+                    ((cpu)
+                     (let* ((cpu-stats (alist-ref 'cpu sys-data))
+                            (num-cpus (and cpu-stats (length cpu-stats)))
+                            (avg-cpu-usage
+                             (if cpu-stats
+                                 (pad-number (trunc (/ (apply + cpu-stats) num-cpus)))
+                                 "--")))
+                       (cons (string-append "CPU: " avg-cpu-usage "%")
+                             (loop (cdr monitors)))))
+                    ((memory)
+                     (let ((memory (alist-ref 'memory sys-data)))
+                       (append
+                        (list (string-append
+                               "RAM: " (if memory
+                                           (string-append
+                                            (pad-number (trunc (car memory)))
+                                            "%")
+                                           "--"))
+                              (string-append
+                               "SWAP: " (if memory
+                                            (string-append
+                                             (pad-number (trunc (cdr memory)))
+                                             "%")
+                                            "--")))
+                        (loop (cdr monitors)))))
+                    ((battery)
+                     (cons (format-batteries (or (alist-ref 'battery sys-data) '()))
+                           (loop (cdr monitors))))
+                    ((network)
+                     (cons (format-network-devices sys-data)
+                           (loop (cdr monitors))))
+                    (else (error 'redraw "Invalid monitor" monitor)))))))
+         (bar-text (string-intersperse bar-data "  |  ")))
     (ezx-wipe bar)
-    (ezx-str-2d bar 2 (fx- (bar-height) 1) content (bar-text-color))
+    (ezx-str-2d bar 2 (fx- (bar-height) 1) bar-text (bar-text-color))
     (ezx-redraw bar)))
 
 (define (init-bar)
