@@ -22,10 +22,9 @@
 (define network-devices (make-parameter '()))
 
 ;; Parameters for chickollect
-(define time-format (make-parameter "%T"))
-(define date-format (make-parameter "%F"))
+(define date/time-format (make-parameter "%T  %F"))
 (define collect-interval (make-parameter 1))
-(define monitors (make-parameter '(memory cpu date time battery network)))
+(define monitors (make-parameter '(memory cpu date/time battery network)))
 
 (define (trunc n)
   (inexact->exact (truncate n)))
@@ -99,10 +98,9 @@
          (num-cpus (if cpu-stats (length cpu-stats) "--"))
          (avg-cpu-usage (trunc (/ (apply + cpu-stats) num-cpus)))
          (bar-fmt
-          "~a  ~a  |  CPU: ~a%  |  RAM: ~a%  |  SWAP: ~a%  |  ~a  |  ~a")
+          "~a  |  CPU: ~a%  |  RAM: ~a%  |  SWAP: ~a%  |  ~a  |  ~a")
          (content (sprintf bar-fmt
-                           (alist-ref 'time sys-data)
-                           (alist-ref 'date sys-data)
+                           (alist-ref 'date/time sys-data)
                            (pad-number avg-cpu-usage)
                            (pad-number ram)
                            (pad-number swap)
@@ -137,8 +135,7 @@
          (when (collect-hook)
            ((collect-hook) data))
          (redraw bar data))
-       time-format: (time-format)
-       date-format: (date-format)
+       date/time-format: (date/time-format)
        collect-interval: (collect-interval)
        monitors: (monitors))
       (ezx-quit bar))))
