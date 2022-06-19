@@ -83,6 +83,7 @@
                            (cond ((eq? battery-status 'Charging) "^")
                                  ((eq? battery-status 'Discharging) "v")
                                  ((eq? battery-status 'Full) "")
+                                 ((eq? battery-status 'Unknown) "?")
                                  (else #f))))
                      (if battery-status
                          (conc battery-capacity "%" (or battery-status-icon ""))
