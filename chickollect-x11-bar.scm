@@ -22,7 +22,7 @@
 (define network-devices (make-parameter '()))
 
 ;; Parameters for chickollect
-(define date/time-format (make-parameter "%T  %F"))
+(define date/time-format (make-parameter "%T  %F  w%V"))
 (define collect-interval (make-parameter 1))
 (define monitors (make-parameter '(memory cpu date/time battery network)))
 
