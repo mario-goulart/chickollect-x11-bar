@@ -70,24 +70,26 @@
    "  |  "))
 
 (define (format-batteries batteries-data)
-  (string-append
-   "BATTERY: "
-   (string-intersperse
-    (map (lambda (battery-data)
-           (if battery-data
-               (let* ((battery-status (car battery-data))
-                      (battery-capacity (cdr battery-data))
-                      (battery-status-icon
-                       (cond ((eq? battery-status 'Charging) "^")
-                             ((eq? battery-status 'Discharging) "v")
-                             ((eq? battery-status 'Full) "")
-                             (else #f))))
-                 (if battery-status
-                     (conc battery-capacity "%" (or battery-status-icon ""))
-                     "--"))
-               "--"))
-         batteries-data)
-    " ")))
+  (if (null? batteries-data)
+      "BATTERY: --"
+      (string-append
+       "BATTERY: "
+       (string-intersperse
+        (map (lambda (battery-data)
+               (if battery-data
+                   (let* ((battery-status (car battery-data))
+                          (battery-capacity (cdr battery-data))
+                          (battery-status-icon
+                           (cond ((eq? battery-status 'Charging) "^")
+                                 ((eq? battery-status 'Discharging) "v")
+                                 ((eq? battery-status 'Full) "")
+                                 (else #f))))
+                     (if battery-status
+                         (conc battery-capacity "%" (or battery-status-icon ""))
+                         "--"))
+                   "--"))
+             batteries-data)
+        " "))))
 
 (define (redraw bar sys-data)
   (let* ((bar-data
