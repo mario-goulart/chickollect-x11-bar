@@ -40,9 +40,9 @@
   (cond ((zero? bytes)
          "--")
         ((> bytes 1000000)
-         (conc (trunc* (/ bytes 1000000) 4) "MBps"))
+         (conc (trunc* (/ bytes 1000000.0) 4) "MBps"))
         ((> bytes 1000)
-         (conc (trunc (/ bytes 1000)) "KBps"))
+         (conc (trunc (/ bytes 1000.0)) "KBps"))
         (else
          (conc (trunc bytes) "Bps"))))
 
