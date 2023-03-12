@@ -6,6 +6,7 @@
  (chicken-5
   (import (chicken fixnum)
           (chicken format)
+          (chicken pathname)
           (chicken process signal)
           (chicken process-context)
           (chicken string))
@@ -144,11 +145,54 @@
     (ezx-set-background bar (bar-background-color))
     bar))
 
+(define (die! fmt . args)
+  (apply fprintf (cons (current-error-port)
+                       (cons (string-append fmt "\n")
+                             args)))
+  (exit 1))
+
+(define (usage #!optional exit-code)
+  (let* ((port (if (and exit-code (not (zero? exit-code)))
+                   (current-error-port)
+                   (current-output-port)))
+         (prog (pathname-strip-directory (program-name)))
+         (msg #<#EOF
+Usage: #prog [--width <pixels>] [<config file>]
+
+EOF
+))
+    (fprintf port msg)
+    (when exit-code (exit exit-code))))
+
+
 (define (main args)
-  (let ((conf-file (and (not (null? args))
-                        (car args))))
+  (let ((conf-file #f)
+        (width #f))
+    (let loop ((args args))
+      (unless (null? args)
+        (let ((arg (car args)))
+          (cond ((member arg '("-h" "-help" "--help"))
+                 (usage 0))
+                ((string=? arg "--width")
+                 (if (null? (cdr args))
+                     (die! "--width: Missing argument.")
+                     (let* ((width-str (cadr args))
+                            (w (string->number width-str)))
+                       (if w
+                           (set! width w)
+                           (die! "--width: Invalid argument: ~a" width-str))
+                       (loop (cddr args)))))
+                (else
+                 (unless conf-file
+                   (set! conf-file arg)
+                   (loop (cdr args))))))))
     (when conf-file
       (load conf-file))
+
+    ;; Command line options overwrite settings in the conf file
+    (when width
+      (bar-width width))
+
     (let ((bar (init-bar)))
       ;; Reload configuration upon receiving SIGHUP
       (set-signal-handler!
