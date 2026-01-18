@@ -4,7 +4,8 @@
   (use data-structures extras posix)
   (use ezxdisp chickollect))
  (chicken-5
-  (import (chicken fixnum)
+  (import (chicken condition)
+          (chicken fixnum)
           (chicken format)
           (chicken pathname)
           (chicken process signal)
@@ -213,4 +214,9 @@ EOF
        monitors: (monitors))
       (ezx-quit bar))))
 
-(main (command-line-arguments))
+(handle-exceptions exn
+  (with-output-to-port (current-error-port)
+    (lambda ()
+      (print-call-chain)
+      (print-error-message exn)))
+  (main (command-line-arguments)))
